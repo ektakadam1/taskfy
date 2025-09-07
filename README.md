@@ -16,3 +16,4 @@ Server API: http://localhost:5000/api/tasks
 Client: http://localhost:3000
 
 Set `server/.env` with `MONGODB_URI` to persist data.
+*Project is live - URL to access - https://taskfy-eabsa6tyg-ekta-kadams-projects.vercel.app/
