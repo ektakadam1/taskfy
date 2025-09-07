@@ -5,7 +5,13 @@ import taskRoutes from './src/routes/taskRoutes.js';
 import { ENV } from './src/config/env.js';
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:3000'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type'],
+  credentials: true
+}));
+
 app.use(express.json());
 
 await connectDB();

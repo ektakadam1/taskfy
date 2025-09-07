@@ -8,7 +8,7 @@ export default function TaskCard(props){
 
   const save = async () => {
     const updates = { title: title().trim(), description: description().trim(), status: status() };
-    await props.onUpdate(props.task.id, updates);
+    await props.onUpdate(props.task._id, updates);
     setEditing(false);
   };
 
@@ -37,7 +37,7 @@ export default function TaskCard(props){
           </div>
           <div class="task-actions">
             <button class="btn" onClick={()=>setEditing(true)}>Edit</button>
-            <button class="btn danger" onClick={async ()=>{ if(confirm('Delete task?')) await props.onDelete(props.task.id); }}>Delete</button>
+            <button class="btn danger" onClick={async ()=>{ if(confirm('Delete task?')) await props.onDelete(props.task._id); }}>Delete</button>
           </div>
         </div>
       )}

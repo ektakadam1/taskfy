@@ -1,22 +1,75 @@
-import { createResource, createSignal } from 'solid-js';
+import { createSignal, onMount, Show } from 'solid-js';
 import { getTasks, createTask, updateTask, deleteTask } from './api';
 import TaskForm from './components/TaskForm';
 import TaskList from './components/TaskList';
 
-export default function App(){
+export default function App() {
   const [query, setQuery] = createSignal('');
   const [statusFilter, setStatusFilter] = createSignal('all');
-  const [tasks, { mutate, refetch }] = createResource(getTasks);
+  const [response, setResponse] = createSignal([]);
+  const [loading, setLoading] = createSignal(true);
+  const [isDataLoaded, setIsDataLoaded] = createSignal(false);
+  onMount(async () => {
+    try {
+      setLoading(true);
+      const res = await getTasks();
+      const uniqueTasks = Array.from(
+        new Map(res.map(task => [task._id, task])).values()
+      );
+      setResponse(uniqueTasks);
+      setIsDataLoaded(true);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+    } finally {
+      setLoading(false);
+    }
+  });
 
-  const handleAdd = (task) => mutate([task, ...tasks()]);
-  const handleDelete = (id) => mutate(tasks().filter(t=>t.id!==id));
-  const handleUpdate = (updated) => mutate(tasks().map(t=> t.id===updated.id ? updated : t));
+
+  const handleAdd = async (task) => {
+    try {
+      const newTask = await createTask(task);
+      setResponse((prev) => [newTask, ...(prev || [])]);
+      setIsDataLoaded(true);
+    } catch (error) {
+      console.error('Error adding task:', error);
+    }
+  };
+
+ 
+  const handleDelete = async (id) => {
+    try {
+      await deleteTask(id);
+      setResponse((prev) => prev.filter((t) => t._id !== id));
+      setIsDataLoaded(true);
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
+  };
+
+  const handleUpdate = async (id, updated) => {
+    debugger
+    try {
+      const updatedTask = await updateTask(id, updated);
+      setResponse((prev) =>
+        prev.map((t) => (t._id === id ? updatedTask : t))
+      );
+      console.log("updated tasks",response())
+      setIsDataLoaded(true);
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
+  };
 
   const filtered = () => {
+    const tasks = response();
+    if (!tasks || tasks.length === 0) return [];
+
     const q = query().toLowerCase();
-    return (tasks()||[]).filter(t=>{
-      if(statusFilter() !== 'all' && t.status !== statusFilter()) return false;
-      if(q && !t.title.toLowerCase().includes(q)) return false;
+    const status = statusFilter();
+    return tasks.filter((task) => {
+      if (status !== 'all' && task.status !== status) return false;
+      if (q && !task.title.toLowerCase().includes(q)) return false;
       return true;
     });
   };
@@ -30,22 +83,50 @@ export default function App(){
 
       <main class="container">
         <section class="left">
-          <TaskForm onAdd={async (payload)=>{ const t = await createTask(payload); handleAdd(t); }} />
+          <TaskForm onAdd={handleAdd} />
         </section>
 
         <section class="right">
           <div class="controls">
-            <input placeholder="Search title..." value={query()} onInput={(e)=>setQuery(e.target.value)} />
-            <select value={statusFilter()} onInput={(e)=>setStatusFilter(e.target.value)}>
+            <input
+              placeholder="Search title..."
+              value={query()}
+              onInput={(e) => setQuery(e.target.value)}
+            />
+            <select
+              value={statusFilter()}
+              onInput={(e) => setStatusFilter(e.target.value)}
+            >
               <option value="all">All</option>
               <option value="pending">Pending</option>
               <option value="in-progress">In-Progress</option>
               <option value="done">Done</option>
             </select>
-            <button onClick={()=>refetch()}>Refresh</button>
+            <button
+              onClick={() => {
+                setLoading(true);
+                getTasks()
+                  .then((res) => {
+                    setResponse(res);
+                    setIsDataLoaded(true);
+                  })
+                  .finally(() => setLoading(false));
+              }}
+            >
+              Refresh
+            </button>
           </div>
 
-          <TaskList tasks={filtered()} onDelete={async (id)=>{ await deleteTask(id); handleDelete(id); }} onUpdate={async (id, updates)=>{ const u = await updateTask(id, updates); handleUpdate(u); }} />
+          <Show
+            when={isDataLoaded()}
+            fallback={<div class="loading">Loading tasks...</div>}
+          >
+            <TaskList
+              tasks={filtered()}
+              onDelete={handleDelete}
+              onUpdate={handleUpdate}
+            />
+          </Show>
         </section>
       </main>
 
